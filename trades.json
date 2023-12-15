@@ -1,0 +1,27 @@
+[
+  {
+    "symbol": "goog",
+    "transactions": [
+      {
+        "date": "2023-50",
+        "quantity": "20",
+        "price": "120"
+      }
+    ]
+  },
+  {
+    "symbol": "APPLE",
+    "transactions": [
+      {
+        "date": "2023-12-11",
+        "quantity": "20",
+        "price": "120"
+      },
+      {
+        "date": "2023-12-12",
+        "quantity": "20",
+        "price": "140"
+      }
+    ]
+  }
+]

@@ -1,0 +1,145 @@
+<!-- newtrade.html -->
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trade Details</title>
+</head>
+<body>
+    <h2>Trade Details</h2>
+    <form id="transactionForm">
+        <label for="symbol">Symbol/Asset:</label>
+        <input type="text" id="symbol" required>
+
+        <div id="transactionContainer"></div>
+
+        <button type="button" onclick="addTransaction()">Add Transaction</button>
+
+        <button type="button" onclick="saveTrade()">Save Trade</button>
+    </form>
+    <script>
+        var transactions = [];
+
+        function addTransaction() {
+            var transactionContainer = document.getElementById('transactionContainer');
+            var transactionCount = transactionContainer.children.length + 1;
+
+            var transactionDiv = document.createElement('div');
+            transactionDiv.className = 'transaction-form';
+
+            transactionDiv.innerHTML = `
+                <label for="transactionDate${transactionCount}">Transaction Date and Time:</label>
+                <input type="text" id="transactionDate${transactionCount}" placeholder="YYYY-MM-DD HH:mm" required>
+
+                <label for="quantity${transactionCount}">Quantity:</label>
+                <input type="number" id="quantity${transactionCount}" required>
+
+                <label for="price${transactionCount}">Price:</label>
+                <input type="number" id="price${transactionCount}" required>
+            `;
+
+            transactionContainer.appendChild(transactionDiv);
+        }
+
+        async function saveTrade() {
+            var symbol = document.getElementById('symbol').value;
+            var transactionContainer = document.getElementById('transactionContainer');
+            var transactions = [];
+
+            for (var i = 0; i < transactionContainer.children.length; i++) {
+                var transactionDate = document.getElementById(`transactionDate${i + 1}`).value;
+                var quantity = document.getElementById(`quantity${i + 1}`).value;
+                var price = document.getElementById(`price${i + 1}`).value;
+
+                transactions.push({
+                    date: transactionDate,
+                    quantity: quantity,
+                    price: price
+                });
+            }
+            var trade = {
+                symbol: symbol,
+                transactions: transactions
+            };
+
+            // If tradeDetails is present, it means we are editing an existing trade
+            if (window.opener.tradeDetails) {
+                // Find and replace the existing trade with the updated trade details
+                var existingTradeIndex = window.opener.trades.findIndex(t => t.tradeDate === window.opener.tradeDetails.tradeDate);
+                window.opener.trades[existingTradeIndex] = trade;
+            } else {
+                // Otherwise, add the new trade to the trades array
+                window.opener.trades.push(trade);
+            }
+
+            try {
+                const response = await fetch('https://demo-29fs.onrender.com/saveTrade', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ tradeData: trade }),
+                });
+
+                const result = await response.json();
+                console.log(`entered a new trade ${trade}`);
+
+                // Access the displayTrades function from the opener (index.html) and call it
+                if (opener && opener.displayTrades) {
+                    opener.displayTrades();
+                }
+            } catch (error) {
+                console.error('Error saving trade:', error);
+            }
+
+             // Use setTimeout to wait for a short period before calling displayTrades from opener
+             setTimeout(function() {
+                // Access the displayTrades function from the opener (index.html) and call it
+                window.opener.displayTrades();
+            }, 100);
+            window.close();
+        }
+
+        var urlParams = new URLSearchParams(window.location.search);
+        var param1 = urlParams.get('trade');
+        if (param1 && (param1 != 'new')) {
+        // If tradeDetails is present, it means we are editing an existing trade
+        // if (window.opener.tradeDetails) {
+            console.log("existing trade")
+            // Populate the form fields with the existing trade details for editing
+            var tradeDetails = window.opener.tradeDetails;
+            document.getElementById('tradeDate').value = tradeDetails.tradeDate;
+            document.getElementById('symbol').value = tradeDetails.symbol;
+            document.getElementById('initialQuantity').value = tradeDetails.initialQuantity;
+            document.getElementById('initialPrice').value = tradeDetails.initialPrice;
+
+            // Populate the transactions for editing
+            for (var i = 0; i < tradeDetails.transactions.length; i++) {
+                addTransaction(); // Add a new transaction form
+                var transaction = tradeDetails.transactions[i];
+                document.getElementById(`transactionDate${i + 1}`).value = transaction.date;
+                document.getElementById(`quantity${i + 1}`).value = transaction.quantity;
+                document.getElementById(`price${i + 1}`).value = transaction.price;
+            }
+        } else {
+            console.log("new  trade")
+
+        }
+
+        function editTradeDetails(tradeDetails) {
+            // Populate the form fields with the existing trade details for editing
+            document.getElementById('symbol').value = tradeDetails.symbol;
+        
+            // Populate the transactions for editing
+            for (var i = 0; i < tradeDetails.transactions.length; i++) {
+                addTransaction(); // Add a new transaction form
+                var transaction = tradeDetails.transactions[i];
+                document.getElementById(`transactionDate${i + 1}`).value = transaction.date;
+                document.getElementById(`quantity${i + 1}`).value = transaction.quantity;
+                document.getElementById(`price${i + 1}`).value = transaction.price;
+            }
+        }
+    </script>
+</body>
+</html>

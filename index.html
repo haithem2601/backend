@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Journal</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        label {
+            display: inline-block;
+            margin-bottom: 5px;
+            margin-right: 10px;
+        }
+        input, select {
+            margin-bottom: 10px;
+        }
+        button {
+            margin-top: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .transaction-form {
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            display: inline-block;
+        }
+        .transaction-form label,
+        .transaction-form input {
+            display: inline-block;
+            margin-bottom: 5px;
+        }
+        .expand-button, .edit-button {
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 5px 10px;
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Trading Journal</h1>
+
+<button onclick="openNewTradeWindow()">Add Trade</button>
+<button onclick="displayTrades()">Display Trades</button>
+
+<h2>Trade History</h2>
+<table id="tradeTable">
+    <thead>
+        <tr>
+            <th>Trade Date and Time</th>
+            <th>Symbol/Asset</th>
+            <th>Initial Quantity</th>
+            <th>Initial Price</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody id="tradeBody"></tbody>
+</table>
+
+<script>
+    var trades = [];
+
+    function openNewTradeWindow() {
+        //var newTradeWindow = window.open('newtrade.html', '_blank', 'width=600,height=500');
+        window.location.href = 'newtrade.html?trade=new';
+        // Pass the displayTrades function to the newTradeWindow
+        //newTradeWindow.displayTrades = displayTrades;
+    }
+
+    async function getTradesFromServer() {
+        try {
+            const response = await fetch('https://demo-29fs.onrender.com/getTrades');
+            trades = await response.json();
+        } catch (error) {
+            console.error('Error getting trades:', error);
+        }
+    }
+    function calculateTotalAndAverage(transactions) {
+        let totalCost = 0;
+        let totalQuantity = 0;
+        let firstTransactionDate = null;
+
+        transactions.forEach(transaction => {
+            // Update firstTransactionDate if it's not set
+            if (!firstTransactionDate) {
+                firstTransactionDate = transaction.date;
+            }
+
+            totalCost += transaction.quantity * transaction.price;
+            totalQuantity += transaction.quantity;
+        });
+
+        // Avoid division by zero
+        if (totalQuantity === 0) {
+            return {
+                totalQuantity: 0,
+                averagePrice: 0,
+                firstTransactionDate: null
+            };
+        }
+
+        const averagePrice = totalCost / totalQuantity;
+
+        return {
+            totalQuantity: totalQuantity,
+            averagePrice: averagePrice,
+            firstTransactionDate: firstTransactionDate
+        };
+    }
+
+    async function displayTrades() {
+        await getTradesFromServer();
+
+        var tradeTable = document.getElementById('tradeTable');
+        var tradeBody = document.getElementById('tradeBody');
+        tradeBody.innerHTML = '';
+
+        for (var i = 0; i < trades.length; i++) {
+            var mainRow = tradeBody.insertRow(-1); // Use -1 to insert at the end
+
+            var trade = trades[i];
+            console.log(trade);
+
+            var mainCells = [];
+            for (var j = 0; j < 6; j++) {
+                mainCells[j] = mainRow.insertCell(j);
+            }
+
+            let result = calculateTotalAndAverage(trade.transactions);
+
+            mainCells[0].innerHTML = result.firstTransactionDate;
+            mainCells[1].innerHTML = trade.symbol;
+            mainCells[2].innerHTML = result.totalQuantity;
+            mainCells[3].innerHTML = result.averagePrice;
+
+            // Display expand/collapse button for the main trade
+            mainCells[4].innerHTML = `<button class="expand-button" onclick="toggleTransactionDetails(${i})">Expand</button>`;
+
+            // Create a new row for transactions
+            var transactionRow = tradeBody.insertRow(-1); // Use -1 to insert at the end
+            transactionRow.style.display = 'none'; // Initially hide the transaction row
+            transactionRow.id = `transactionRow${i}`;
+
+            // Create a new cell for transactions
+            var transactionCell = transactionRow.insertCell(0);
+            transactionCell.colSpan = 5; // Span the entire width of the table
+
+            // Create a new table for transactions
+            var transactionTable = document.createElement('table');
+            transactionTable.className = 'transaction-table';
+            transactionTable.id = `transactionTable${i}`;
+            transactionCell.appendChild(transactionTable);
+
+            // Display transactions on new rows in the child table
+            for (var k = 0; k < trade.transactions.length; k++) {
+                var transaction = trade.transactions[k];
+                var transactionRow = transactionTable.insertRow(k);
+                transactionRow.innerHTML = `<td>Date: ${transaction.date}</td><td>Quantity: ${transaction.quantity}</td><td>Price: ${transaction.price}</td>`;
+            }
+
+            // Add an "Edit" button next to the "Expand" button
+            var editButtonCell = mainRow.insertCell(5);
+            editButtonCell.innerHTML = `<button class="edit-button" onclick="editTrade(${i})">Edit</button>`;
+        }
+    }
+
+    function toggleTransactionDetails(index) {
+        var transactionRow = document.getElementById(`transactionRow${index}`);
+        var expandButton = document.querySelector(`#tradeTable tbody tr:nth-child(${index * 2 + 1}) td:nth-child(5) .expand-button`);
+
+        if (transactionRow.style.display == 'none') {
+            transactionRow.style.display = '';
+            if (expandButton)
+                expandButton.innerText = 'Collapse';
+        } else {
+            transactionRow.style.display = 'none';
+            if (expandButton)
+                expandButton.innerText = 'Expand';
+        }
+    }
+
+
+
+    function editTrade(index) {
+        var tradeDetails = trades[index];
+        var newTradeWindow = window.open('newtrade.html', '_blank', 'width=600,height=500');
+        newTradeWindow.onload = function () {
+            newTradeWindow.displayTrades = displayTrades;
+            console.log(tradeDetails)
+            newTradeWindow.editTradeDetails(tradeDetails);
+        };
+    }
+    // Call getTradesFromServer to initially load trades from the server
+    getTradesFromServer();
+</script>
+
+</body>
+</html>
